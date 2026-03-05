@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omar — Vocab Flashcards</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0e0f13;
+    --surface: #16181f;
+    --card-front: #1c1f2a;
+    --card-back: #111827;
+    --accent: #f0c060;
+    --accent2: #5b8dee;
+    --text: #e8e9ed;
+    --muted: #6b7280;
+    --learned: #34d399;
+    --border: rgba(255,255,255,0.07);
+    --radius: 18px;
+  }
+
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 80% 50% at 20% 10%, rgba(91,141,238,0.07) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 40% at 80% 90%, rgba(240,192,96,0.05) 0%, transparent 60%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  #app { position: relative; z-index: 1; min-height: 100vh; display: flex; flex-direction: column; }
+
+  /* HEADER */
+  header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 20px 32px;
+    border-bottom: 1px solid var(--border);
+    backdrop-filter: blur(10px);
+  }
+  .logo {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.3rem;
+    color: var(--accent);
+    letter-spacing: 0.02em;
+  }
+  .logo span { color: var(--muted); font-size: 0.8rem; font-family: 'DM Mono', monospace; margin-left: 8px; }
+  .header-stats { display: flex; gap: 20px; }
+  .stat-pill {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 50px;
+    padding: 6px 14px;
+    font-size: 0.78rem;
+    font-family: 'DM Mono', monospace;
+    color: var(--muted);
+  }
+  .stat-pill b { color: var(--text); }
+
+  /* MAIN */
+  main { flex: 1; display: flex; flex-direction: column; align-items: center; padding: 32px 16px; }
+
+  .screen { display: none; width: 100%; max-width: 700px; flex-direction: column; align-items: center; }
+  .screen.active { display: flex; }
+
+  /* HOME */
+  .home-title {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(2rem, 5vw, 3rem);
+    text-align: center;
+    margin-bottom: 8px;
+    line-height: 1.15;
+  }
+  .home-subtitle { color: var(--muted); font-size: 0.95rem; text-align: center; margin-bottom: 40px; }
+
+  .day-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 14px;
+    width: 100%;
+    margin-bottom: 32px;
+  }
+  .day-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  .day-card:hover {
+    border-color: var(--accent);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(240,192,96,0.1);
+  }
+  .day-card .day-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 6px;
+  }
+  .day-card .day-range { font-size: 0.85rem; color: var(--muted); margin-bottom: 12px; }
+  .day-progress-bar { height: 3px; background: var(--border); border-radius: 2px; overflow: hidden; }
+  .day-progress-fill { height: 100%; background: var(--learned); border-radius: 2px; transition: width 0.4s ease; }
+  .day-progress-text { font-size: 0.75rem; color: var(--muted); margin-top: 6px; font-family: 'DM Mono', monospace; }
+
+  .section-title {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    align-self: flex-start;
+    margin-bottom: 12px;
+    margin-top: 24px;
+  }
+
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    padding: 12px 28px;
+    border-radius: 50px;
+    border: none;
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+  }
+  .btn-primary { background: var(--accent); color: #0e0f13; }
+  .btn-primary:hover { background: #ffd27a; transform: translateY(-1px); box-shadow: 0 4px 16px rgba(240,192,96,0.3); }
+  .btn-secondary { background: var(--surface); color: var(--text); border: 1px solid var(--border); }
+  .btn-secondary:hover { border-color: var(--accent2); color: var(--accent2); }
+  .btn-ghost { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+  .btn-ghost:hover { color: var(--text); border-color: var(--muted); }
+
+  .practice-options { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; width: 100%; margin-bottom: 16px; }
+  .practice-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px 20px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: left;
+    flex: 1; min-width: 160px;
+  }
+  .practice-card:hover { border-color: var(--accent2); }
+  .practice-card .pc-label { font-size: 0.75rem; color: var(--accent2); font-family: 'DM Mono', monospace; margin-bottom: 4px; }
+  .practice-card .pc-title { font-size: 0.95rem; font-weight: 500; }
+  .practice-card .pc-count { font-size: 0.8rem; color: var(--muted); margin-top: 4px; }
+
+  /* STUDY */
+  .study-header {
+    width: 100%;
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 24px;
+  }
+  .study-info { display: flex; flex-direction: column; gap: 4px; }
+  .study-day { font-family: 'DM Mono', monospace; font-size: 0.7rem; color: var(--accent); text-transform: uppercase; letter-spacing: 0.1em; }
+  .study-counter { font-size: 0.85rem; color: var(--muted); }
+  .study-counter b { color: var(--text); }
+  .progress-track { width: 100%; height: 2px; background: var(--border); border-radius: 1px; margin-bottom: 28px; overflow: hidden; }
+  .progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent2), var(--accent)); border-radius: 1px; transition: width 0.4s ease; }
+
+  /* FLIP CARD */
+  .card-scene {
+    width: 100%;
+    height: 380px;
+    perspective: 1000px;
+    cursor: pointer;
+    margin-bottom: 24px;
+  }
+  .flip-card {
+    width: 100%; height: 100%;
+    position: relative;
+    transform-style: preserve-3d;
+    transition: transform 0.55s cubic-bezier(0.23, 1, 0.32, 1);
+  }
+  .flip-card.flipped { transform: rotateY(180deg); }
+
+  .card-face {
+    position: absolute; inset: 0;
+    border-radius: var(--radius);
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 36px 40px;
+    border: 1px solid var(--border);
+  }
+  .card-face.front {
+    background: var(--card-front);
+    box-shadow: 0 20px 60px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.04);
+  }
+  .card-face.back {
+    background: var(--card-back);
+    transform: rotateY(180deg);
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.04);
+    justify-content: flex-start;
+    padding-top: 28px;
+    overflow-y: auto;
+  }
+
+  /* FRONT SIDE */
+  .word-number { font-family: 'DM Mono', monospace; font-size: 0.7rem; color: var(--muted); margin-bottom: 12px; letter-spacing: 0.08em; }
+  .word-term { font-family: 'Playfair Display', serif; font-size: clamp(2rem, 6vw, 3rem); color: var(--text); text-align: center; margin-bottom: 10px; }
+  .word-pos { font-family: 'DM Mono', monospace; font-size: 0.75rem; color: var(--accent); padding: 3px 10px; background: rgba(240,192,96,0.1); border-radius: 20px; margin-bottom: 8px; }
+  .word-phonetic { font-size: 0.85rem; color: var(--muted); }
+  .tap-hint { position: absolute; bottom: 16px; font-size: 0.72rem; color: var(--muted); font-family: 'DM Mono', monospace; display: flex; align-items: center; gap: 6px; }
+  .tap-hint::before { content: '↩'; }
+
+  /* BACK SIDE */
+  .back-section { width: 100%; margin-bottom: 16px; }
+  .back-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 5px;
+  }
+
+  .word-az {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.4rem;
+    color: var(--accent);
+    line-height: 1.3;
+  }
+
+  .word-definition {
+    font-size: 0.92rem;
+    line-height: 1.7;
+    color: #c9cdd6;
+  }
+
+  .word-sentence {
+    font-size: 0.88rem;
+    line-height: 1.65;
+    color: #8b92a5;
+    font-style: italic;
+  }
+  .word-sentence b {
+    color: var(--accent2);
+    font-style: normal;
+  }
+
+  .back-divider {
+    width: 100%;
+    height: 1px;
+    background: var(--border);
+    margin-bottom: 14px;
+  }
+
+  /* LEARNED BADGE */
+  .learned-badge {
+    position: absolute; top: 16px; right: 16px;
+    background: rgba(52,211,153,0.15);
+    color: var(--learned);
+    border: 1px solid rgba(52,211,153,0.3);
+    border-radius: 50px;
+    padding: 4px 10px;
+    font-size: 0.72rem;
+    font-family: 'DM Mono', monospace;
+    display: none;
+  }
+  .card-scene.is-learned .learned-badge { display: block; }
+  .card-scene.is-learned .card-face.front { border-color: rgba(52,211,153,0.2); }
+
+  /* ACTIONS */
+  .card-actions { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; width: 100%; margin-bottom: 16px; }
+  .action-btn {
+    flex: 1; min-width: 120px; max-width: 180px;
+    padding: 12px 16px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.85rem;
+    transition: all 0.2s;
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+  }
+  .action-btn:hover { transform: translateY(-1px); }
+  .action-btn.mark-learned { border-color: rgba(52,211,153,0.4); color: var(--learned); }
+  .action-btn.mark-learned:hover { background: rgba(52,211,153,0.1); }
+  .action-btn.mark-learned.active { background: rgba(52,211,153,0.15); }
+  .action-btn.next { border-color: rgba(91,141,238,0.4); color: var(--accent2); }
+  .action-btn.next:hover { background: rgba(91,141,238,0.1); }
+
+  .keyboard-hint { font-size: 0.72rem; color: var(--muted); font-family: 'DM Mono', monospace; text-align: center; margin-bottom: 12px; }
+  kbd { background: var(--surface); border: 1px solid var(--border); border-radius: 4px; padding: 1px 6px; font-size: 0.7rem; font-family: 'DM Mono', monospace; }
+
+  /* COMPLETE */
+  .screen#screen-complete { text-align: center; padding: 40px 20px; }
+  .complete-icon { font-size: 3rem; margin-bottom: 16px; }
+  .complete-title { font-family: 'Playfair Display', serif; font-size: 2rem; margin-bottom: 8px; }
+  .complete-subtitle { color: var(--muted); margin-bottom: 32px; }
+  .complete-stats { display: flex; gap: 24px; justify-content: center; margin-bottom: 32px; flex-wrap: wrap; }
+  .c-stat { text-align: center; }
+  .c-stat .val { font-family: 'Playfair Display', serif; font-size: 2.5rem; color: var(--accent); display: block; }
+  .c-stat .lbl { font-size: 0.8rem; color: var(--muted); }
+
+  /* TOAST */
+  .toast {
+    position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%) translateY(20px);
+    background: var(--surface); border: 1px solid var(--border); border-radius: 50px;
+    padding: 10px 20px; font-size: 0.85rem; color: var(--text);
+    opacity: 0; transition: all 0.3s ease; pointer-events: none; z-index: 100; white-space: nowrap;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  @media (max-width: 500px) {
+    header { padding: 14px 16px; }
+    .header-stats { gap: 8px; }
+    .stat-pill { font-size: 0.7rem; padding: 5px 10px; }
+    main { padding: 20px 12px; }
+    .card-scene { height: 420px; }
+    .card-face { padding: 20px; }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div class="logo">omar <span>vocab</span></div>
+    <div class="header-stats">
+      <div class="stat-pill">Total <b id="hdr-total">242</b></div>
+      <div class="stat-pill">Learned <b id="hdr-learned" style="color:var(--learned)">0</b></div>
+    </div>
+  </header>
+
+  <main>
+    <!-- HOME -->
+    <div class="screen active" id="screen-home">
+      <h1 class="home-title">March 2026<br>Prediction Vocab</h1>
+      <p class="home-subtitle">242 words · 40 words/day · 6 sessions</p>
+      <div class="section-title">📅 Daily Sessions</div>
+      <div class="day-grid" id="day-grid"></div>
+      <div class="section-title">🎯 Practice Mode</div>
+      <div class="practice-options" id="practice-options"></div>
+    </div>
+
+    <!-- STUDY -->
+    <div class="screen" id="screen-study">
+      <div class="study-header">
+        <div class="study-info">
+          <div class="study-day" id="study-day-label">Day 1</div>
+          <div class="study-counter">Card <b id="study-cur">1</b> of <b id="study-total">40</b></div>
+        </div>
+        <button class="btn btn-ghost" onclick="goHome()" style="padding:8px 16px;font-size:0.82rem;">← Back</button>
+      </div>
+      <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
+
+      <div class="card-scene" id="card-scene" onclick="flipCard()">
+        <div class="flip-card" id="flip-card">
+
+          <!-- FRONT -->
+          <div class="card-face front">
+            <div class="word-number" id="word-num">#001</div>
+            <div class="word-term" id="word-term">—</div>
+            <div class="word-pos" id="word-pos">adj.</div>
+            <div class="word-phonetic" id="word-phonetic">[ ]</div>
+            <div class="tap-hint">tap to reveal</div>
+            <div class="learned-badge">✓ Learned</div>
+          </div>
+
+          <!-- BACK -->
+          <div class="card-face back">
+            <!-- AZ TRANSLATION -->
+            <div class="back-section">
+              <div class="back-label">🇦🇿 Azərbaycan</div>
+              <div class="word-az" id="word-az">—</div>
+            </div>
+            <div class="back-divider"></div>
+            <!-- DEFINITION -->
+            <div class="back-section">
+              <div class="back-label">📖 Definition</div>
+              <div class="word-definition" id="word-def">—</div>
+            </div>
+            <div class="back-divider"></div>
+            <!-- EXAMPLE SENTENCE -->
+            <div class="back-section">
+              <div class="back-label">✏️ Example</div>
+              <div class="word-sentence" id="word-sentence">—</div>
+            </div>
+            <div class="learned-badge">✓ Learned</div>
+          </div>
+
+        </div>
+      </div>
+
+      <div class="card-actions">
+        <button class="action-btn prev" onclick="prevCard()">← Prev</button>
+        <button class="action-btn mark-learned" id="btn-learned" onclick="toggleLearned()">☑ Mark Learned</button>
+        <button class="action-btn next" onclick="nextCard()">Next →</button>
+      </div>
+      <div class="keyboard-hint"><kbd>Space</kbd> flip &nbsp; <kbd>←</kbd><kbd>→</kbd> navigate &nbsp; <kbd>L</kbd> mark learned</div>
+    </div>
+
+    <!-- COMPLETE -->
+    <div class="screen" id="screen-complete">
+      <div class="complete-icon">🎉</div>
+      <h2 class="complete-title">Session Complete!</h2>
+      <p class="complete-subtitle" id="complete-sub">You finished Day 1</p>
+      <div class="complete-stats">
+        <div class="c-stat"><span class="val" id="c-seen">0</span><span class="lbl">Cards Seen</span></div>
+        <div class="c-stat"><span class="val" id="c-learned">0</span><span class="lbl">Learned</span></div>
+        <div class="c-stat"><span class="val" id="c-total">0</span><span class="lbl">Total Learned</span></div>
+      </div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center;">
+        <button class="btn btn-primary" onclick="retrySession()">🔁 Practice Again</button>
+        <button class="btn btn-secondary" onclick="goHome()">← Back to Home</button>
+      </div>
+    </div>
+  </main>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+// ════════════════════════════════════════════════════════
+//  PASTE YOUR WORDS ARRAY HERE — replace the [] below
+//  Each object must have:
+//    id       : number (1–242)
+//    word     : string  — the English word
+//    pos      : string  — part of speech e.g. "adj." "v." "n."
+//    phonetic : string  — pronunciation e.g. "[məˈlɪʃəs]"
+//    az       : string  — Azerbaijani translation
+//    def      : string  — English definition
+//    sentence : string  — example sentence (wrap the keyword in <b>word</b>)
+// ════════════════════════════════════════════════════════
+const WORDS = [{id:1,word:"malicious",pos:"adj.",phonetic:"[məˈlɪʃəs]",az:"pis niyyətli, zərərli",def:"If you describe someone's words or actions as malicious, you mean that they are intended to harm people or their reputation, or cause them embarrassment and upset.",sentence:"The <b>malicious</b> rumors spread by his rival nearly destroyed his career."},
+  {id:2,word:"rampant",pos:"adj.",phonetic:"[ˈræmpənt]",az:"geniş yayılmış, nəzarətsiz",def:"If you describe something bad, such as a crime or disease, as rampant, you mean that it is very common and is increasing in an uncontrolled way.",sentence:"Corruption was so <b>rampant</b> in the city that citizens had lost all faith in the government."},
+  {id:3,word:"underpin",pos:"v.",phonetic:"[ˌʌndəˈpɪn]",az:"dəstəkləmək, möhkəmləndirmək",def:"If one thing underpins another, it helps the other thing to continue or succeed by supporting and strengthening it.",sentence:"Strong scientific research <b>underpins</b> every recommendation made by the health committee."},
+  {id:4,word:"ubiquitous",pos:"adj.",phonetic:"[juːˈbɪkwɪtəs]",az:"hər yerdə olan",def:"If you describe something or someone as ubiquitous, you mean that they seem to be everywhere.",sentence:"Smartphones have become so <b>ubiquitous</b> that it is rare to see someone without one."},
+  {id:5,word:"overshadow",pos:"v.",phonetic:"[ˌəʊvəˈʃædəʊ]",az:"kölgədə qoymaq, əhəmiyyətsiz göstərmək",def:"To make someone or something seem less important or less successful.",sentence:"Her brilliant performance <b>overshadowed</b> everyone else on stage that evening."},
+  {id:6,word:"prone",pos:"adj.",phonetic:"[prəʊn]",az:"meylli, həssas",def:"To be prone to something, usually something bad, means to have a tendency to be affected by it or to do it.",sentence:"Athletes who skip warm-ups are more <b>prone</b> to serious muscle injuries."},
+  {id:7,word:"misrepresent",pos:"v.",phonetic:"[ˌmɪsˌreprɪˈzent]",az:"təhrif etmək, yanlış təqdim etmək",def:"If someone misrepresents a person or situation, they give a wrong or inaccurate account of what the person or situation is like.",sentence:"The article <b>misrepresented</b> the scientist's findings, causing widespread confusion."},
+  {id:8,word:"tenacious",pos:"adj.",phonetic:"[təˈneɪʃəs]",az:"inadkar, əzmli",def:"If you are tenacious, you are very determined and do not give up easily.",sentence:"Despite countless rejections, the <b>tenacious</b> writer finally published her debut novel."},
+  {id:9,word:"champion",pos:"v.",phonetic:"[ˈtʃæmpɪən]",az:"müdafiə etmək, dəstəkləmək",def:"If you champion a person, a cause, or a principle, you support or defend them.",sentence:"She spent her entire career <b>championing</b> the rights of refugees around the world."},
+  {id:10,word:"platitude",pos:"n.",phonetic:"[ˈplætɪˌtjuːd]",az:"bayağı söz, klişe ifadə",def:"A platitude is a statement that is considered meaningless and boring because it has been made many times before in similar situations.",sentence:"His speech was full of <b>platitudes</b> and offered no real solutions to the crisis."},
+  {id:11,word:"counteract",pos:"v.",phonetic:"[ˌkaʊntəˈækt]",az:"əks təsir göstərmək, zərərsizləşdirmək",def:"To counteract something means to reduce its effect by doing something that produces an opposite effect.",sentence:"The doctors gave him medicine to <b>counteract</b> the effects of the poison."},
+  {id:12,word:"preposterous",pos:"adj.",phonetic:"[prɪˈpɒstərəs]",az:"absurd, gülünc, mənasız",def:"If you describe something as preposterous, you mean that it is extremely unreasonable and foolish.",sentence:"The idea that the Earth is only a few thousand years old is scientifically <b>preposterous</b>."},
+  {id:13,word:"diffident",pos:"adj.",phonetic:"[ˈdɪfɪdənt]",az:"utancaq, özünə güvənməyən",def:"Someone who is diffident is rather shy and does not enjoy talking about themselves or being noticed by other people.",sentence:"The <b>diffident</b> student rarely raised his hand in class, even when he knew the answer."},
+  {id:14,word:"implement",pos:"v.",phonetic:"[ˈɪmplɪmənt]",az:"həyata keçirmək, tətbiq etmək",def:"If you implement something such as a plan, you ensure that what has been planned is done.",sentence:"The school board voted to <b>implement</b> the new curriculum starting next semester."},
+  {id:15,word:"unanimity",pos:"n.",phonetic:"[ˌjuːnəˈnɪməti]",az:"yekdillik, tam razılıq",def:"When there is unanimity among a group of people, they all agree about something or all vote for the same thing.",sentence:"The jury reached a verdict with surprising <b>unanimity</b> after just two hours of deliberation."},
+  {id:16,word:"inscrutable",pos:"adj.",phonetic:"[ɪnˈskruːtəbl]",az:"anlaşılmaz, sirrli",def:"If a person or their expression is inscrutable, it is very hard to know what they are really thinking or what they mean.",sentence:"The diplomat's <b>inscrutable</b> expression revealed nothing about his government's true intentions."},
+  {id:17,word:"banal",pos:"adj.",phonetic:"[bəˈnɑːl]",az:"adi, maraqsız, orijinalsız",def:"If you describe something as banal, you do not like it because you think it is so ordinary that it is not at all effective or interesting.",sentence:"Critics dismissed the film as <b>banal</b>, calling it a predictable copy of better movies."},
+  {id:18,word:"compelling",pos:"adj.",phonetic:"[kəmˈpelɪŋ]",az:"inandırıcı, diqqəti cəlb edən",def:"A compelling argument or reason is one that convinces you that something is true or that something should be done.",sentence:"She made a <b>compelling</b> case for expanding public transportation in the city."},
+  {id:19,word:"dismissive",pos:"adj.",phonetic:"[dɪsˈmɪsɪv]",az:"laqeyd, etinasız, xor baxan",def:"If you are dismissive of someone or something, you say or show that you think they are not important or have no value.",sentence:"He was <b>dismissive</b> of his colleague's suggestions, waving them off without consideration."},
+  {id:20,word:"desolate",pos:"adj.",phonetic:"[ˈdesələt]",az:"boş, viranə, tənha",def:"A desolate place is empty of people and lacking in comfort.",sentence:"After the factory closed, the once-busy town became a <b>desolate</b> wasteland."},
+  {id:21,word:"accentuate",pos:"v.",phonetic:"[əkˈsentʃuet]",az:"vurğulamaq, ön plana çıxarmaq",def:"To accentuate something means to emphasize it or make it more noticeable.",sentence:"The bright lighting served only to <b>accentuate</b> the cracks in the old building's walls."},
+  {id:22,word:"impassive",pos:"adj.",phonetic:"[ɪmˈpæsɪv]",az:"hissiz, ifadəsiz, soyuqqanlı",def:"If someone is impassive or their face is impassive, they are not showing any emotion.",sentence:"The judge remained completely <b>impassive</b> as the shocking evidence was presented."},
+  {id:23,word:"sever",pos:"v.",phonetic:"[ˈsevə]",az:"kəsmək, qoparmaq, dayandırmaq",def:"To sever something means to cut completely through it or to cut it completely off.",sentence:"The two countries decided to <b>sever</b> all diplomatic ties following the scandal."},
+  {id:24,word:"undermine",pos:"v.",phonetic:"[ˌʌndəˈmaɪn]",az:"zəiflətmək, sarsıtmaq",def:"If you undermine something such as a feeling or a system, you make it less strong or less secure than it was before, often by a gradual process.",sentence:"Constant criticism from management began to <b>undermine</b> the team's confidence."},
+  {id:25,word:"substitute",pos:"v.",phonetic:"[ˈsʌbstɪtjuːt]",az:"əvəz etmək, yerinə qoymaq",def:"If you substitute one thing for another, it takes the place or performs the function of the other thing.",sentence:"You can <b>substitute</b> honey for sugar in most baking recipes."},
+  {id:26,word:"furnish",pos:"v.",phonetic:"[ˈfɜːnɪʃ]",az:"təmin etmək, təchiz etmək",def:"If you furnish someone with something, you provide or supply it.",sentence:"The lawyer asked the client to <b>furnish</b> all relevant documents before the trial."},
+  {id:27,word:"concise",pos:"adj.",phonetic:"[kənˈsaɪs]",az:"qısa və dəqiq, lakonik",def:"Something that is concise says everything that is necessary without using any unnecessary words.",sentence:"A good essay should be <b>concise</b>, covering key points without unnecessary padding."},
+  {id:28,word:"prestige",pos:"n.",phonetic:"[preˈstiːʒ]",az:"nüfuz, hörmət, şöhrət",def:"If a person, a country, or an organization has prestige, they are admired and respected because of the position they hold or the things they have achieved.",sentence:"Winning the Nobel Prize brought enormous <b>prestige</b> to the small research university."},
+  {id:29,word:"stale",pos:"adj.",phonetic:"[steɪl]",az:"köhnə, bayat, təzəliyi itmiş",def:"Stale food is no longer fresh or good to eat. More broadly, stale ideas lack novelty.",sentence:"His jokes were so <b>stale</b> that nobody in the audience even smiled."},
+  {id:30,word:"obsolete",pos:"adj.",phonetic:"[ˈɒbsəliːt]",az:"köhnəlmiş, istifadədən çıxmış",def:"Something that is obsolete is no longer needed because something better has been invented.",sentence:"The rise of digital cameras made film photography almost completely <b>obsolete</b>."},
+  {id:31,word:"intermittent",pos:"adj.",phonetic:"[ˌɪntəˈmɪtənt]",az:"fasiləli, ara-sıra olan",def:"Something that is intermittent happens occasionally rather than continuously.",sentence:"The patient experienced <b>intermittent</b> headaches throughout the week."},
+  {id:32,word:"provincial",pos:"adj.",phonetic:"[prəˈvɪnʃl]",az:"dar düşüncəli, köhnəpərəst",def:"If you describe someone or something as provincial, you disapprove of them because you think that they are old-fashioned and narrow.",sentence:"Her <b>provincial</b> attitude made it difficult for her to adapt to life in the cosmopolitan city."},
+  {id:33,word:"prescribe",pos:"v.",phonetic:"[prɪˈskraɪb]",az:"müəyyən etmək, təyin etmək",def:"If a person or set of laws or rules prescribes an action or duty, they state that it must be carried out.",sentence:"The regulations <b>prescribe</b> exactly how chemical waste must be disposed of."},
+  {id:34,word:"understate",pos:"v.",phonetic:"[ˌʌndəˈsteɪt]",az:"kiçiltmək, əhəmiyyətini azaltmaq",def:"To state that something is smaller, less important, or less serious than it really is.",sentence:"To say the damage was minor would be to <b>understate</b> the scale of the disaster."},
+  {id:35,word:"construe",pos:"v.",phonetic:"[kənˈstruː]",az:"başa düşmək, şərh etmək",def:"If something is construed in a particular way, its nature or meaning is interpreted in that way.",sentence:"His silence was <b>construed</b> as an admission of guilt by the investigators."},
+  {id:36,word:"nonchalant",pos:"adj.",phonetic:"[ˈnɒnʃələnt]",az:"laqeyd, etinasız, sakit",def:"If you describe someone as nonchalant, you mean that they appear not to worry or care about things and they seem very calm.",sentence:"She seemed completely <b>nonchalant</b> about the exam results, as if she hadn't studied at all."},
+  {id:37,word:"concession",pos:"n.",phonetic:"[kənˈseʃən]",az:"güzəşt, imtiyaz",def:"If you make a concession to someone, you agree to let them do or have something, especially in order to end an argument or conflict.",sentence:"The union made several <b>concessions</b> during negotiations to avoid a strike."},
+  {id:38,word:"serene",pos:"adj.",phonetic:"[səˈriːn]",az:"sakit, arxayın, dinc",def:"Someone or something that is serene is calm and quiet.",sentence:"Despite the chaos around her, the meditation teacher remained perfectly <b>serene</b>."},
+  {id:39,word:"implacable",pos:"adj.",phonetic:"[ɪmˈplækəbl]",az:"yumşalmayan, barışmaz",def:"If you say that someone is implacable, you mean that they have very strong feelings of hostility or disapproval that nobody can change.",sentence:"The general faced <b>implacable</b> opposition from citizens who refused to accept the new laws."},
+  {id:40,word:"churlish",pos:"adj.",phonetic:"[ˈtʃɜːlɪʃ]",az:"kobud, nəzakətsiz, xasiyyətsiz",def:"Someone who is churlish is unfriendly, bad-tempered, or impolite.",sentence:"It would be <b>churlish</b> to refuse the generous hospitality they had offered us."},
+  {id:41,word:"deference",pos:"n.",phonetic:"[ˈdefərəns]",az:"hörmət, ehtiram, itaətkarlıq",def:"Deference is a polite and respectful attitude toward someone, especially because they have an important position.",sentence:"In <b>deference</b> to the elder statesman, all the younger officials stood when he entered."},
+  {id:42,word:"replenish",pos:"v.",phonetic:"[rɪˈplenɪʃ]",az:"yenidən doldurmaq, bərpa etmək",def:"If you replenish something, you make it full or complete again.",sentence:"After the long hike, they stopped at a stream to <b>replenish</b> their water supplies."},
+  {id:43,word:"haphazard",pos:"adj.",phonetic:"[ˌhæpˈhæzərd]",az:"nizamsız, plansız, qarışıq",def:"If you describe something as haphazard, you are critical of it because it is not at all organized or not arranged according to a plan.",sentence:"The files were stored in such a <b>haphazard</b> manner that nobody could find anything quickly."},
+  {id:44,word:"conscientious",pos:"adj.",phonetic:"[ˌkɒnʃɪˈenʃəs]",az:"vicdanlı, məsuliyyətli, diqqətli",def:"Someone who is conscientious is very careful to do their work properly.",sentence:"A <b>conscientious</b> student always reviews her notes before an important exam."},
+  {id:45,word:"languish",pos:"v.",phonetic:"[ˈlæŋɡwɪʃ]",az:"əziyyət çəkmək, əzab içində olmaq",def:"If someone languishes somewhere, they are forced to remain and suffer in an unpleasant situation.",sentence:"The prisoner <b>languished</b> in his cell for years while his appeal was being reviewed."},
+  {id:46,word:"repudiate",pos:"v.",phonetic:"[rɪˈpjuːdɪeɪt]",az:"rədd etmək, inkar etmək, kənar çıxmaq",def:"If you repudiate something or someone, you show that you strongly disagree with them and do not want to be connected with them in any way.",sentence:"The senator publicly <b>repudiated</b> the extremist group that had claimed to support him."},
+  {id:47,word:"advent",pos:"n.",phonetic:"[ˈædvənt]",az:"meydana gəlmə, başlanğıc",def:"The advent of an important event, invention, or situation is the fact of it starting or coming into existence.",sentence:"The <b>advent</b> of the internet changed nearly every aspect of modern life."},
+  {id:48,word:"alacrity",pos:"n.",phonetic:"[əˈlækrəti]",az:"həvəslə, istəklə, tez",def:"If you do something with alacrity, you do it quickly and eagerly.",sentence:"The students responded with great <b>alacrity</b> when the teacher announced a field trip."},
+  {id:49,word:"postulate",pos:"v.",phonetic:"[ˈpɒstʃəleɪt]",az:"fərz etmək, irəli sürmək",def:"If you postulate something, you suggest it as the basis for a theory, argument, or calculation.",sentence:"Einstein <b>postulated</b> that the speed of light is constant regardless of the observer's motion."},
+  {id:50,word:"despoil",pos:"v.",phonetic:"[dɪˈspɔɪl]",az:"talan etmək, məhv etmək",def:"To despoil a place means to make it less attractive, valuable, or important by taking things away from it or by destroying it.",sentence:"Industrial mining operations have <b>despoiled</b> vast areas of the once-beautiful landscape."},
+  {id:51,word:"paramount",pos:"adj.",phonetic:"[ˈpærəmaʊnt]",az:"ən vacib, əsas, birinci",def:"Something that is paramount or of paramount importance is more important than anything else.",sentence:"Patient safety is of <b>paramount</b> importance in every hospital procedure."},
+  {id:52,word:"multitude",pos:"n.",phonetic:"[ˈmʌltɪtjuːd]",az:"çoxluq, kütlə, böyük miqdar",def:"A multitude of things or people is a very large number of them.",sentence:"A <b>multitude</b> of fans gathered outside the stadium hours before the concert began."},
+  {id:53,word:"affection",pos:"n.",phonetic:"[əˈfekʃən]",az:"sevgi, məhəbbət, istək",def:"Your affections are your feelings of love or fondness for someone.",sentence:"She showed great <b>affection</b> for her younger siblings, always looking after them."},
+  {id:54,word:"empathy",pos:"n.",phonetic:"[ˈempəθi]",az:"empatiya, başqasının hissini anlamaq",def:"Empathy is the ability to share another person's feelings and emotions as if they were your own.",sentence:"A good therapist must have deep <b>empathy</b> for the struggles of their patients."},
+  {id:55,word:"resilient",pos:"adj.",phonetic:"[rɪˈzɪlɪənt]",az:"dözümlü, möhkəm, çevik",def:"Something that is resilient is strong and not easily damaged or destroyed.",sentence:"Children are often more <b>resilient</b> than adults give them credit for after difficult experiences."},
+  {id:56,word:"insatiable",pos:"adj.",phonetic:"[ɪnˈseɪʃəbl]",az:"doyumsuz, doymaz",def:"If someone has an insatiable desire for something, they want as much of it as they can possibly get.",sentence:"His <b>insatiable</b> curiosity led him to read dozens of books every month."},
+  {id:57,word:"unyielding",pos:"adj.",phonetic:"[ʌnˈjiːldɪŋ]",az:"güzəştsiz, qərarlı, dönməz",def:"You describe someone as unyielding when they have very strong, fixed ideas about something and are unlikely to change their mind.",sentence:"Despite pressure from all sides, the negotiator remained <b>unyielding</b> in her position."},
+  {id:58,word:"adhere",pos:"v.",phonetic:"[ədˈhɪr]",az:"riayət etmək, bağlı qalmaq",def:"If you adhere to a rule or agreement, you act in the way that it says you should.",sentence:"All participants must <b>adhere</b> to the competition rules or risk disqualification."},
+  {id:59,word:"cue",pos:"n.",phonetic:"[kjuː]",az:"işarə, siqnal, ipucu",def:"A performer's cue is something another performer says or does that is a signal for them to begin speaking, playing, or doing something.",sentence:"The actor missed his <b>cue</b> and walked on stage three lines too early."},
+  {id:60,word:"occasion",pos:"v.",phonetic:"[əˈkeɪʒən]",az:"səbəb olmaq, doğurmaq",def:"To occasion something means to cause it.",sentence:"The unexpected announcement <b>occasioned</b> widespread debate among the public."},
+  {id:61,word:"daunt",pos:"v.",phonetic:"[dɔːnt]",az:"qorxutmaq, ürəyini sındırmaq",def:"If something daunts you, it makes you feel slightly afraid or worried about dealing with it.",sentence:"The size of the challenge did not <b>daunt</b> her — she began working immediately."},
+  {id:62,word:"incriminate",pos:"v.",phonetic:"[ɪnˈkrɪmɪneɪt]",az:"günahkar olduğunu göstərmək, ittiham etmək",def:"If something incriminates you, it suggests that you are responsible for something bad, especially a crime.",sentence:"The detective found evidence that would <b>incriminate</b> the suspect in three separate robberies."},
+  {id:63,word:"attend",pos:"v.",phonetic:"[əˈtend]",az:"müşayiət etmək, bərabər olmaq",def:"To happen or exist at the same time as something.",sentence:"Great responsibility always <b>attends</b> the exercise of political power."},
+  {id:64,word:"ambivalent",pos:"adj.",phonetic:"[æmˈbɪvələnt]",az:"ziddiyyətli hisslər keçirən, ikimənalı",def:"Having or showing simultaneous and contradictory attitudes or feelings toward something or someone.",sentence:"She felt <b>ambivalent</b> about the job offer — excited about the salary but worried about the location."},
+  {id:65,word:"paucity",pos:"n.",phonetic:"[ˈpɔːsɪti]",az:"azlıq, çatışmazlıq",def:"If you say that there is a paucity of something, you mean that there is not enough of it.",sentence:"The report highlighted the <b>paucity</b> of research into rare childhood diseases."},
+  {id:66,word:"ascertain",pos:"v.",phonetic:"[ˌæsəˈteɪn]",az:"müəyyən etmək, aydınlaşdırmaq",def:"If you ascertain the truth about something, you find out what it is, especially by making a deliberate effort to do so.",sentence:"Investigators worked hard to <b>ascertain</b> the exact cause of the plane crash."},
+  {id:67,word:"surmount",pos:"v.",phonetic:"[səˈmaʊnt]",az:"üstələmək, aradan qaldırmaq",def:"If you surmount a problem or difficulty, you deal successfully with it.",sentence:"Through perseverance and teamwork, they managed to <b>surmount</b> every obstacle in their path."},
+  {id:68,word:"reprimand",pos:"v.",phonetic:"[ˈreprɪmænd]",az:"məzəmmət etmək, tənbeh etmək",def:"If someone is reprimanded, they are spoken to angrily or seriously for doing something wrong, usually by a person in authority.",sentence:"The officer was officially <b>reprimanded</b> for failing to follow safety procedures."},
+  {id:69,word:"mitigate",pos:"v.",phonetic:"[ˈmɪtɪɡeɪt]",az:"yüngülləşdirmək, azaltmaq",def:"To mitigate something means to make it less unpleasant, serious, or painful.",sentence:"Planting trees along the highway helped to <b>mitigate</b> the noise for nearby residents."},
+  {id:70,word:"perfunctory",pos:"adj.",phonetic:"[pəˈfʌŋktəri]",az:"səthi, maraqsız, üstündən keçən",def:"A perfunctory action is done quickly and carelessly, and shows a lack of interest in what you are doing.",sentence:"He gave the safety instructions only a <b>perfunctory</b> glance before signing the form."},
+  {id:71,word:"alleviate",pos:"v.",phonetic:"[əˈliːvɪeɪt]",az:"yüngülləşdirmək, azaltmaq",def:"If you alleviate pain, suffering, or an unpleasant condition, you make it less intense or severe.",sentence:"The new medication significantly <b>alleviated</b> the patient's chronic back pain."},
+  {id:72,word:"transient",pos:"adj.",phonetic:"[ˈtrænzɪənt]",az:"müvəqqəti, keçici",def:"Transient is used to describe a situation that lasts only a short time or is constantly changing.",sentence:"Fame can be <b>transient</b>; yesterday's celebrity is often forgotten within a year."},
+  {id:73,word:"simulate",pos:"v.",phonetic:"[ˈsɪmjuleɪt]",az:"təqlid etmək, modelləşdirmək",def:"If you simulate a set of conditions, you create them artificially, for example, in order to conduct an experiment.",sentence:"NASA uses special equipment to <b>simulate</b> the weightless conditions of outer space."},
+  {id:74,word:"avarice",pos:"n.",phonetic:"[ˈævərɪs]",az:"tamahkarlıq, acgözlük",def:"Avarice is an extremely strong desire for money and possessions.",sentence:"His <b>avarice</b> was so great that he refused to share his profits with any of his workers."},
+  {id:75,word:"contradict",pos:"v.",phonetic:"[ˌkɒntrəˈdɪkt]",az:"əksinə demək, inkar etmək",def:"If you contradict someone, you tell them that what they have just said is wrong, or suggest that it is wrong by saying something different.",sentence:"The second witness's testimony directly <b>contradicted</b> what the first witness had said."},
+  {id:76,word:"explicit",pos:"adj.",phonetic:"[ɪkˈsplɪsɪt]",az:"açıq, aydın, birmənalı",def:"Something that is explicit is expressed or shown clearly and openly, without any attempt to hide anything.",sentence:"The contract contained <b>explicit</b> instructions about what each party was required to do."},
+  {id:77,word:"incorporate",pos:"v.",phonetic:"[ɪnˈkɔːpəreɪt]",az:"daxil etmək, birləşdirmək",def:"To include something so that it forms a part of something else.",sentence:"The architect decided to <b>incorporate</b> solar panels into the design of the new building."},
+  {id:78,word:"disparage",pos:"v.",phonetic:"[dɪˈspærɪdʒ]",az:"kiçiltmək, xor görmək, alçaltmaq",def:"If you disparage someone or something, you speak about them in a way which shows that you do not have a good opinion of them.",sentence:"It is unprofessional to <b>disparage</b> your competitors in front of potential clients."},
+  {id:79,word:"torpor",pos:"n.",phonetic:"[ˈtɔːpə]",az:"süstlük, hərəkətsizlik, passivlik",def:"Torpor is the state of being completely inactive mentally or physically, for example, because of illness or laziness.",sentence:"After the heavy holiday meal, everyone sank into a comfortable <b>torpor</b> on the sofa."},
+  {id:80,word:"blur",pos:"n.",phonetic:"[blɜː]",az:"bulanıqlıq, aydın olmayan şey",def:"A blur is a shape or area which you cannot see clearly because it has no distinct outline or because it is moving very fast.",sentence:"The years of her childhood have become a distant <b>blur</b> of vague memories."},
+  {id:81,word:"copious",pos:"adj.",phonetic:"[ˈkəʊpɪəs]",az:"bol, çoxlu, geniş",def:"A copious amount of something is a large amount of it.",sentence:"She took <b>copious</b> notes during the lecture so she would have everything she needed to study."},
+  {id:82,word:"underline",pos:"v.",phonetic:"[ˌʌndəˈlaɪn]",az:"vurğulamaq, altını çizmək",def:"If one thing underlines another, it draws attention to it and emphasizes its importance.",sentence:"The recent floods <b>underline</b> the urgent need for better flood-prevention infrastructure."},
+  {id:83,word:"concur",pos:"v.",phonetic:"[kənˈkɜː]",az:"razılaşmaq, eyni fikirdə olmaq",def:"If one person concurs with another person, the two people agree.",sentence:"All three experts <b>concurred</b> that the painting was a genuine work by the master."},
+  {id:84,word:"impotent",pos:"adj.",phonetic:"[ˈɪmpətənt]",az:"gücsüz, aciz, təsirsiz",def:"If someone feels impotent, they feel that they have no power to influence people or events.",sentence:"Watching the disaster unfold on the news, citizens felt <b>impotent</b> and helpless."},
+  {id:85,word:"stifle",pos:"v.",phonetic:"[ˈstaɪfl]",az:"boğmaq, bastırmaq",def:"If someone stifles something you consider to be a good thing, they prevent it from continuing.",sentence:"Excessive regulation can <b>stifle</b> creativity and innovation in the tech industry."},
+  {id:86,word:"impair",pos:"v.",phonetic:"[ɪmˈpeɪr]",az:"zədələmək, pisləşdirmək",def:"If something impairs something such as an ability or the way something works, it damages it or makes it worse.",sentence:"Lack of sleep can seriously <b>impair</b> your ability to concentrate and make decisions."},
+  {id:87,word:"meager",pos:"adj.",phonetic:"[ˈmiːɡə]",az:"az, cüzi, yetersiz",def:"If you describe an amount or quantity of something as meager, you are critical of it because it is very small or not enough.",sentence:"The survivors had only a <b>meager</b> supply of food and water to last the week."},
+  {id:88,word:"gauge",pos:"v.",phonetic:"[ɡeɪdʒ]",az:"ölçmək, qiymətləndirmək",def:"If you gauge the speed or strength of something, or if you gauge an amount, you measure or calculate it.",sentence:"It is difficult to <b>gauge</b> public opinion on such a complex and divisive issue."},
+  {id:89,word:"adverse",pos:"adj.",phonetic:"[ˈædvɜːs]",az:"əlverişsiz, zərərli, mənfi",def:"Adverse decisions, conditions, or effects are unfavorable to you.",sentence:"The expedition was called off due to <b>adverse</b> weather conditions in the mountains."},
+  {id:90,word:"supremacy",pos:"n.",phonetic:"[sjuːˈpreməsi]",az:"üstünlük, hegemonluq",def:"If one group of people has supremacy over another group, they have more political or military power than the other group.",sentence:"The nation sought to establish its naval <b>supremacy</b> over the disputed waters."},
+  {id:91,word:"acquire",pos:"v.",phonetic:"[əˈkwaɪr]",az:"əldə etmək, qazanmaq",def:"If you acquire something, you buy or obtain it for yourself, or someone gives it to you.",sentence:"Over the years, she <b>acquired</b> an impressive collection of rare antique books."},
+  {id:92,word:"evanescent",pos:"adj.",phonetic:"[ˌevəˈnesnt]",az:"tez keçib gedən, ötəri",def:"Disappearing quickly from sight or memory.",sentence:"The beauty of the sunset was <b>evanescent</b>, lasting only a few glorious minutes."},
+  {id:93,word:"behold",pos:"v.",phonetic:"[bɪˈhəʊld]",az:"görmək, müşahidə etmək",def:"If you behold someone or something, you see them.",sentence:"Travelers came from distant lands to <b>behold</b> the magnificent ancient ruins."},
+  {id:94,word:"impassioned",pos:"adj.",phonetic:"[ɪmˈpæʃnd]",az:"ehtiraslı, həyəcanlı",def:"Showing strong feelings about something.",sentence:"The lawyer made an <b>impassioned</b> plea to the jury on behalf of her innocent client."},
+  {id:95,word:"camouflage",pos:"v.",phonetic:"[ˈkæməflɑːʒ]",az:"gizlətmək, maskalamaq",def:"If you camouflage something such as a feeling or a situation, you hide it or make it appear to be something different.",sentence:"He tried to <b>camouflage</b> his disappointment with a forced smile."},
+  {id:96,word:"extract",pos:"v.",phonetic:"[ˈekstrækt]",az:"çıxarmaq, hasil etmək",def:"To extract a substance means to obtain it from something else, for example, by using industrial or chemical processes.",sentence:"Scientists have found a way to <b>extract</b> useful fuel from agricultural waste."},
+  {id:97,word:"viable",pos:"adj.",phonetic:"[ˈvaɪəbl]",az:"mümkün, həyata keçirilə bilən",def:"Something that is viable is capable of doing what it is intended to do.",sentence:"Solar energy is now a fully <b>viable</b> alternative to fossil fuels in most regions."},
+  {id:98,word:"erratic",pos:"adj.",phonetic:"[ɪˈrætɪk]",az:"qeyri-sabit, nizamsız",def:"Something that is erratic does not follow a regular pattern, but happens at unexpected times or moves along in an irregular way.",sentence:"His <b>erratic</b> behavior at work made his colleagues uncertain how to approach him."},
+  {id:99,word:"cave",pos:"v.",phonetic:"[keɪv]",az:"güzəştə getmək, boyun əymək",def:"To cave in means to finally do what someone wants after you have been strongly opposing them.",sentence:"After weeks of protest from employees, the company finally <b>caved</b> and increased wages."},
+  {id:100,word:"precarious",pos:"adj.",phonetic:"[prɪˈkeərɪəs]",az:"qeyri-sabit, təhlükəli, riskli",def:"If your situation is precarious, you are not in complete control of events and might fail at any moment.",sentence:"The mountain climbers found themselves in a <b>precarious</b> position on the icy cliff face."},
+  {id:101,word:"lament",pos:"v.",phonetic:"[ləˈment]",az:"ah-vay etmək, kədərlənmək",def:"If you lament something, you express your sadness, regret, or disappointment about it.",sentence:"She <b>lamented</b> the loss of the old library, which had been demolished to make a parking lot."},
+  {id:102,word:"underscore",pos:"v.",phonetic:"[ˌʌndəˈskɔː]",az:"vurğulamaq, əhəmiyyətini göstərmək",def:"If something underscores another, it draws attention to the other thing and emphasizes its importance.",sentence:"The high dropout rate <b>underscores</b> the need for better support systems in schools."},
+  {id:103,word:"mushroom",pos:"v.",phonetic:"[ˈmʌʃrʊm]",az:"sürətlə böyümək, çoxalmaq",def:"If something such as an industry or a place mushrooms, it grows or comes into existence very quickly.",sentence:"Online businesses <b>mushroomed</b> during the pandemic as consumers shifted to digital shopping."},
+  {id:104,word:"ineluctable",pos:"adj.",phonetic:"[ˌɪnɪˈlʌktəbl]",az:"qaçınılmaz, labüd",def:"That you cannot avoid.",sentence:"Death is the one <b>ineluctable</b> fact of every human existence."},
+  {id:105,word:"archaic",pos:"adj.",phonetic:"[ɑːˈkeɪk]",az:"köhnəlmiş, arxaik, qədim",def:"Archaic means extremely old or extremely old-fashioned.",sentence:"The legal system still contained several <b>archaic</b> laws that had not been updated in centuries."},
+  {id:106,word:"compress",pos:"v.",phonetic:"[kəmˈpres]",az:"sıxmaq, sıxışdırmaq",def:"When you compress something, it is pressed or squeezed so that it takes up less space.",sentence:"You can <b>compress</b> large image files to make them easier to send by email."},
+  {id:107,word:"gaunt",pos:"adj.",phonetic:"[ɡɔːnt]",az:"arıq, solğun, cansız görünən",def:"If someone looks gaunt, they look very thin, usually because they have been very ill or worried.",sentence:"After months of illness, he appeared <b>gaunt</b> and pale when he finally left the hospital."},
+  {id:108,word:"defunct",pos:"adj.",phonetic:"[dɪˈfʌŋkt]",az:"artıq mövcud olmayan, ləğv edilmiş",def:"No longer existing, operating, or being used.",sentence:"The once-popular social media platform is now completely <b>defunct</b>."},
+  {id:109,word:"concrete",pos:"adj.",phonetic:"[ˈkɒŋkriːt]",az:"konkret, dəqiq, real",def:"You use concrete to indicate that something is definite and specific.",sentence:"The manager asked the team to present <b>concrete</b> evidence to support their proposal."},
+  {id:110,word:"cease",pos:"v.",phonetic:"[siːs]",az:"dayandırmaq, bitirmək",def:"If you cease something, you stop it happening or working.",sentence:"The factory was ordered to <b>cease</b> production until all safety violations were corrected."},
+  {id:111,word:"refrain",pos:"v.",phonetic:"[rɪˈfreɪn]",az:"çəkinmək, saxlamaq özünü",def:"If you refrain from doing something, you deliberately do not do it.",sentence:"Please <b>refrain</b> from using your phone during the performance."},
+  {id:112,word:"attest",pos:"v.",phonetic:"[əˈtest]",az:"sübut etmək, şəhadət vermək",def:"To attest something or attest to something means to say, show, or prove that it is true.",sentence:"Her outstanding academic record <b>attests</b> to years of hard work and dedication."},
+  {id:113,word:"perspicacious",pos:"adj.",phonetic:"[ˌpɜːspɪˈkeɪʃəs]",az:"iti zəkalı, anlayışlı, müdrik",def:"Someone who is perspicacious notices, realizes, and understands things quickly.",sentence:"The <b>perspicacious</b> investor spotted the company's potential years before anyone else."},
+  {id:114,word:"ascent",pos:"n.",phonetic:"[əˈsent]",az:"qalxma, yüksəliş",def:"An ascent is an upward journey, especially when you are walking or climbing.",sentence:"The team's <b>ascent</b> of the mountain took three days and required careful planning."},
+  {id:115,word:"prudent",pos:"adj.",phonetic:"[ˈpruːdnt]",az:"ehtiyatlı, ağıllı, müdrik",def:"Someone who is prudent is sensible and careful.",sentence:"It is always <b>prudent</b> to save some money for unexpected expenses."},
+  {id:116,word:"devastate",pos:"v.",phonetic:"[ˈdevəsteɪt]",az:"dağıtmaq, viran qoymaq",def:"If something devastates an area or a place, it damages it very badly or destroys it totally.",sentence:"The earthquake <b>devastated</b> the coastal city, leaving thousands of people homeless."},
+  {id:117,word:"fallacious",pos:"adj.",phonetic:"[fəˈleɪʃəs]",az:"yanlış, səhv, aldadıcı",def:"If an idea, argument, or reason is fallacious, it is wrong because it is based on a fallacy.",sentence:"The professor quickly exposed the student's <b>fallacious</b> reasoning during the debate."},
+  {id:118,word:"curb",pos:"v.",phonetic:"[kɜːb]",az:"məhdudlaşdırmaq, cilovlamaq",def:"If you curb something, you control it and keep it within limits.",sentence:"The government introduced new laws to <b>curb</b> excessive spending by public officials."},
+  {id:119,word:"scrutiny",pos:"n.",phonetic:"[ˈskruːtəni]",az:"diqqətli araşdırma, yoxlama",def:"If a person or thing is under scrutiny, they are being studied or observed very carefully.",sentence:"Every detail of the celebrity's life was under intense media <b>scrutiny</b>."},
+  {id:120,word:"evince",pos:"v.",phonetic:"[ɪˈvɪns]",az:"göstərmək, nümayiş etdirmək",def:"If someone or something evinces a particular feeling or quality, they show that feeling or quality, often indirectly.",sentence:"His careful attention to detail <b>evinced</b> a deep commitment to quality in his craft."},
+  {id:121,word:"quirk",pos:"n.",phonetic:"[kwɜːk]",az:"qəribəlik, xüsusi xasiyyət",def:"A quirk is a habit or aspect of a person's character which is odd or unusual.",sentence:"One of his endearing <b>quirks</b> was his habit of humming while reading."},
+  {id:122,word:"irrefutable",pos:"adj.",phonetic:"[ɪˈrefjʊtəbl]",az:"inkar edilə bilməz, danılmaz",def:"That cannot be proved wrong and that must therefore be accepted.",sentence:"The DNA evidence provided <b>irrefutable</b> proof that the accused was innocent."},
+  {id:123,word:"discomfit",pos:"v.",phonetic:"[dɪsˈkʌmfɪt]",az:"utandırmaq, çaşdırmaq",def:"If you are discomfited by something, it causes you to feel slightly embarrassed or confused.",sentence:"The unexpected question clearly <b>discomfited</b> the politician during the live interview."},
+  {id:124,word:"evoke",pos:"v.",phonetic:"[ɪˈvəʊk]",az:"oyatmaq, xatırlatmaq, doğurmaq",def:"To evoke a particular memory, idea, emotion, or response means to cause it to occur.",sentence:"The old photograph <b>evoked</b> a flood of happy childhood memories."},
+  {id:125,word:"innocuous",pos:"adj.",phonetic:"[ɪˈnɒkjʊəs]",az:"zərərsiz, heç kimə zərər verməyən",def:"Something that is innocuous is not at all harmful or offensive.",sentence:"What seemed like an <b>innocuous</b> comment at first turned out to cause great offense."},
+  {id:126,word:"heterogeneous",pos:"adj.",phonetic:"[ˌhetərəˈdʒiːnɪəs]",az:"müxtəlif, eynicinsli olmayan",def:"A heterogeneous group consists of many different types of things or people.",sentence:"The class was a <b>heterogeneous</b> mix of students from over twenty different countries."},
+  {id:127,word:"disclose",pos:"v.",phonetic:"[dɪsˈkləʊz]",az:"açıqlamaq, ifşa etmək",def:"If you disclose new or secret information, you tell people about it.",sentence:"The company was legally required to <b>disclose</b> all financial risks to investors."},
+  {id:128,word:"fervor",pos:"n.",phonetic:"[ˈfɜːvə]",az:"həvəs, ehtiras, alov",def:"Fervor for something is a very strong feeling for or belief in it.",sentence:"The young activist spoke with such <b>fervor</b> that the crowd was immediately inspired."},
+  {id:129,word:"register",pos:"v.",phonetic:"[ˈredʒɪstə]",az:"göstərmək, əks etdirmək",def:"When something registers on a scale or measuring instrument, it shows on the scale or instrument.",sentence:"The earthquake was strong enough to <b>register</b> on seismographs across three continents."},
+  {id:130,word:"resent",pos:"v.",phonetic:"[rɪˈzent]",az:"incimək, küsmək, nifrət etmək",def:"If you resent someone or something, you feel bitter and angry about them.",sentence:"She deeply <b>resented</b> being passed over for the promotion she had worked so hard to earn."},
+  {id:131,word:"prosaic",pos:"adj.",phonetic:"[prəʊˈzeɪɪk]",az:"sıxıcı, maraqsız, adi",def:"Something that is prosaic is dull and uninteresting.",sentence:"He dreamed of adventure but was stuck in a <b>prosaic</b> office routine day after day."},
+  {id:132,word:"intimidate",pos:"v.",phonetic:"[ɪnˈtɪmɪdeɪt]",az:"qorxutmaq, hədələmək",def:"If you intimidate someone, you deliberately make them frightened enough to do what you want them to do.",sentence:"The bullies tried to <b>intimidate</b> younger students into giving them money."},
+  {id:133,word:"bent",pos:"adj.",phonetic:"[bent]",az:"qərarlı, əzmlə düşüncəli",def:"If someone is bent on doing something, especially something harmful, they are determined to do it.",sentence:"He was clearly <b>bent</b> on causing trouble from the moment he walked into the room."},
+  {id:134,word:"spur",pos:"v.",phonetic:"[spɜː]",az:"həvəsləndirmək, təşviq etmək",def:"If one thing spurs you to do another, it encourages you to do it.",sentence:"Her teacher's encouraging words <b>spurred</b> her to apply for the prestigious scholarship."},
+  {id:135,word:"underestimate",pos:"v.",phonetic:"[ˌʌndərˈestɪmeɪt]",az:"qiymətini azaltmaq, kiçik hesab etmək",def:"If you underestimate something, you do not realize how large or great it is or will be.",sentence:"Never <b>underestimate</b> the power of a simple act of kindness to change someone's day."},
+  {id:136,word:"persistent",pos:"adj.",phonetic:"[pəˈsɪstənt]",az:"davamlı, inadlı, israrçı",def:"Someone who is persistent continues trying to do something, even though it is difficult or other people are against it.",sentence:"Despite repeated rejections, the <b>persistent</b> inventor finally received a patent for his design."},
+  {id:137,word:"mirth",pos:"n.",phonetic:"[mɜːθ]",az:"şənlik, gülüş, sevinc",def:"Mirth is amusement which you express by laughing.",sentence:"The comedian's performance filled the room with genuine <b>mirth</b> and laughter."},
+  {id:138,word:"presage",pos:"v.",phonetic:"[ˈpresɪdʒ]",az:"əvvəlcədən xəbər vermək, işarə etmək",def:"If something presages a situation or event, it is considered to be a warning or sign of what is about to happen.",sentence:"The dark clouds gathering on the horizon seemed to <b>presage</b> a severe storm."},
+  {id:139,word:"empirical",pos:"adj.",phonetic:"[ɪmˈpɪrɪkl]",az:"empirik, müşahidəyə əsaslanan",def:"Empirical evidence or study relies on practical experience rather than theories.",sentence:"The scientists demanded <b>empirical</b> data before accepting the new hypothesis."},
+  {id:140,word:"lighthearted",pos:"adj.",phonetic:"[ˈlaɪtˌhɑːtɪd]",az:"şən, qayğısız, şəndil",def:"Someone who is lighthearted is cheerful and happy.",sentence:"The documentary had a <b>lighthearted</b> tone that made a serious topic easy to enjoy."},
+  {id:141,word:"feat",pos:"n.",phonetic:"[fiːt]",az:"nailiyyət, qəhrəmanlıq, uğur",def:"If you refer to an action as a feat, you admire it because it is an impressive and difficult achievement.",sentence:"Climbing Mount Everest alone is an extraordinary <b>feat</b> of human endurance."},
+  {id:142,word:"petition",pos:"v.",phonetic:"[pɪˈtɪʃ(ə)n]",az:"müraciət etmək, xahiş etmək",def:"If you petition someone in authority, you make a formal request to them.",sentence:"Thousands of residents <b>petitioned</b> the city council to preserve the historic building."},
+  {id:143,word:"consensus",pos:"n.",phonetic:"[kənˈsensəs]",az:"konsensus, ümumi razılıq",def:"A consensus is general agreement among a group of people.",sentence:"The committee reached a <b>consensus</b> after three hours of constructive discussion."},
+  {id:144,word:"delineate",pos:"v.",phonetic:"[dɪˈlɪnɪeɪt]",az:"təsvir etmək, izah etmək",def:"If you delineate something such as an idea or situation, you describe or define it, often in a lot of detail.",sentence:"The report carefully <b>delineates</b> the roles and responsibilities of each department."},
+  {id:145,word:"diminish",pos:"v.",phonetic:"[dɪˈmɪnɪʃ]",az:"azaltmaq, kiçiltmək",def:"When something diminishes, or when something diminishes it, it becomes reduced in size, importance, or intensity.",sentence:"Nothing can <b>diminish</b> the pride she feels for everything her children have achieved."},
+  {id:146,word:"facilitate",pos:"v.",phonetic:"[fəˈsɪlɪteɪt]",az:"asanlaşdırmaq, mümkün etmək",def:"To facilitate an action or process means to make it easier or more likely to happen.",sentence:"Good public transport <b>facilitates</b> economic growth by connecting workers to employers."},
+  {id:147,word:"exalt",pos:"v.",phonetic:"[ɪɡˈzɔːlt]",az:"ucaltmaq, yüksəltmək",def:"To put someone or something into a high rank or position.",sentence:"The victorious general was <b>exalted</b> to the rank of national hero."},
+  {id:148,word:"corrosive",pos:"adj.",phonetic:"[kəˈrəʊsɪv]",az:"aşındırıcı, yeyici, dağıdıcı",def:"A corrosive substance is able to destroy solid materials by a chemical reaction.",sentence:"The <b>corrosive</b> effects of acid rain have damaged many stone monuments across Europe."},
+  {id:149,word:"misconstrue",pos:"v.",phonetic:"[ˌmɪskənˈstruː]",az:"yanlış anlamaq, səhv yozumaq",def:"To understand someone's words or actions wrongly.",sentence:"His friendly gesture was <b>misconstrued</b> as an attempt to manipulate the situation."},
+  {id:150,word:"crux",pos:"n.",phonetic:"[krʌks]",az:"əsas məsələ, ən vacib hissə",def:"The crux of a problem or argument is the most important or difficult part of it which affects everything else.",sentence:"The <b>crux</b> of the dispute was who owned the land along the river boundary."},
+  {id:151,word:"aggravate",pos:"v.",phonetic:"[ˈæɡrəveɪt]",az:"pisləşdirmək, kəskinləşdirmək",def:"If someone or something aggravates a situation, they make it worse.",sentence:"Scratching an insect bite will only <b>aggravate</b> the irritation and slow down healing."},
+  {id:152,word:"exquisite",pos:"adj.",phonetic:"[ɪkˈskwɪzɪt]",az:"əla, incə, çox gözəl",def:"Something that is exquisite is extremely beautiful or pleasant, especially in a delicate way.",sentence:"The jeweler crafted an <b>exquisite</b> necklace from diamonds and rare blue sapphires."},
+  {id:153,word:"forthcoming",pos:"adj.",phonetic:"[ˌfɔːθˈkʌmɪŋ]",az:"yaxınlaşan, gələcək, planlaşdırılmış",def:"A forthcoming event is planned to happen soon.",sentence:"Details about the <b>forthcoming</b> album were released to fans ahead of the official announcement."},
+  {id:154,word:"expedient",pos:"adj.",phonetic:"[ɪkˈspiːdɪənt]",az:"münasib, məqsədəuyğun",def:"If it is expedient to do something, it is useful or convenient to do it, even though it may not be morally right.",sentence:"It was politically <b>expedient</b> to delay the decision until after the election."},
+  {id:155,word:"anticipate",pos:"v.",phonetic:"[ænˈtɪsɪpeɪt]",az:"gözləmək, öncədən hiss etmək",def:"If you anticipate an event, you realize in advance that it may happen and you are prepared for it.",sentence:"Good coaches <b>anticipate</b> their opponent's strategies and prepare their team accordingly."},
+  {id:156,word:"pertinent",pos:"adj.",phonetic:"[ˈpɜːtɪnənt]",az:"münasib, aidiyyatlı, əlaqəli",def:"Something that is pertinent is relevant to a particular subject.",sentence:"Please keep your questions <b>pertinent</b> to the topic we are discussing today."},
+  {id:157,word:"utilitarian",pos:"adj.",phonetic:"[juːˌtɪlɪˈteərɪən]",az:"praktik, faydalı, utilitarist",def:"Utilitarian means based on the idea that the morally correct course of action produces benefit for the greatest number of people.",sentence:"The building's design was purely <b>utilitarian</b>, with no decorative features whatsoever."},
+  {id:158,word:"outweigh",pos:"v.",phonetic:"[ˌaʊtˈweɪ]",az:"üstün olmaq, önə keçmək",def:"If one thing outweighs another, the first thing is of greater importance, benefit, or significance than the second.",sentence:"The potential benefits of the surgery <b>outweigh</b> the risks, according to the specialist."},
+  {id:159,word:"impede",pos:"v.",phonetic:"[ɪmˈpiːd]",az:"mane olmaq, əngəlləmək",def:"If you impede someone or something, you make their movement, development, or progress difficult.",sentence:"Fallen trees <b>impeded</b> the rescue teams' efforts to reach the flood victims."},
+  {id:160,word:"given",pos:"prep.",phonetic:"[ˈɡɪvn]",az:"nəzərə alaraq, hesaba qataraq",def:"If you say given something, you mean taking that thing into account.",sentence:"<b>Given</b> the limited budget, the team produced a remarkably successful result."},
+  {id:161,word:"boom",pos:"n.",phonetic:"[buːm]",az:"iqtisadi yüksəliş, canlanma",def:"If there is a boom in the economy, there is an increase in economic activity.",sentence:"The technology <b>boom</b> of the 1990s created thousands of new millionaires overnight."},
+  {id:162,word:"capricious",pos:"adj.",phonetic:"[kəˈprɪʃəs]",az:"dəyişkən, qeyri-sabit, həvəsvari",def:"Someone who is capricious often changes their mind unexpectedly.",sentence:"The <b>capricious</b> weather made it impossible to plan an outdoor event with any certainty."},
+  {id:163,word:"sagacious",pos:"adj.",phonetic:"[səˈɡeɪʃəs]",az:"müdrik, ağıllı, uzaqgörən",def:"A sagacious person is intelligent and has the ability to make good decisions.",sentence:"The <b>sagacious</b> elder advised the young king to seek peace rather than war."},
+  {id:164,word:"elaborate",pos:"v.",phonetic:"[ɪˈlæbəreɪt]",az:"ətraflı izah etmək, genişləndirmək",def:"If you elaborate on something that has been said, you say more about it, or give more details.",sentence:"The reporter asked the minister to <b>elaborate</b> on the government's new economic plan."},
+  {id:165,word:"obliterate",pos:"v.",phonetic:"[əˈblɪtəreɪt]",az:"məhv etmək, silmək, yox etmək",def:"If something obliterates an object or place, it destroys it completely.",sentence:"The volcanic eruption <b>obliterated</b> the entire village within minutes."},
+  {id:166,word:"gallant",pos:"adj.",phonetic:"[ˈɡælənt]",az:"cəsur, igid, nəcib",def:"If someone is gallant, they behave bravely and honorably in a dangerous or difficult situation.",sentence:"The <b>gallant</b> firefighter rushed back into the burning building to save the trapped child."},
+  {id:167,word:"arresting",pos:"adj.",phonetic:"[əˈrestɪŋ]",az:"diqqəti cəlb edən, heyrətamiz",def:"Attracting attention; interesting; striking.",sentence:"The painting's <b>arresting</b> use of color stopped every visitor the moment they entered the gallery."},
+  {id:168,word:"juxtapose",pos:"v.",phonetic:"[ˈdʒʌkstəpəʊz]",az:"yanyana qoymaq, müqayisə etmək",def:"If you juxtapose two contrasting objects or ideas, you place them together so that the differences between them are emphasized.",sentence:"The documentary <b>juxtaposes</b> images of extreme wealth and devastating poverty."},
+  {id:169,word:"untenable",pos:"adj.",phonetic:"[ʌnˈtenəbl]",az:"müdafiə edilə bilməz, davam etdirilə bilməz",def:"That cannot be defended against attack or criticism.",sentence:"After the new evidence emerged, his position became completely <b>untenable</b>."},
+  {id:170,word:"futile",pos:"adj.",phonetic:"[ˈfjuːtaɪl]",az:"faydasız, nəticəsiz, boşuna",def:"If you say that something is futile, you mean there is no point in doing it, because it has no chance of succeeding.",sentence:"It was <b>futile</b> to argue with him once he had made up his mind."},
+  {id:171,word:"blemish",pos:"v.",phonetic:"[ˈblemɪʃ]",az:"ləkələmək, xaraba qoymaq",def:"If something blemishes someone's character or reputation, it spoils it or makes it seem less good than it was in the past.",sentence:"One scandal can permanently <b>blemish</b> the reputation of an otherwise respected institution."},
+  {id:172,word:"bombastic",pos:"adj.",phonetic:"[bɒmˈbæstɪk]",az:"lovğa, şişirdilmiş, boş danışan",def:"If you describe someone as bombastic, you are criticizing them for trying to impress people by saying things that sound impressive but have little meaning.",sentence:"His <b>bombastic</b> speech impressed no one — it was all grand words with no real content."},
+  {id:173,word:"defer",pos:"v.",phonetic:"[dɪˈfɜː]",az:"tabe olmaq, hörmət edərək qəbul etmək",def:"If you defer to someone, you accept their opinion or do what they want you to do, even when you do not agree with it yourself.",sentence:"Younger employees often <b>defer</b> to their senior colleagues on matters of company policy."},
+  {id:174,word:"soothe",pos:"v.",phonetic:"[suːð]",az:"sakitləşdirmək, təsəlli vermək",def:"If you soothe someone who is angry or upset, you make them feel calmer.",sentence:"The mother sang softly to <b>soothe</b> her crying baby back to sleep."},
+  {id:175,word:"ameliorate",pos:"v.",phonetic:"[əˈmiːlɪəreɪt]",az:"yaxşılaşdırmaq, islah etmək",def:"If someone or something ameliorates a situation, they make it better or easier in some way.",sentence:"New housing policies are intended to <b>ameliorate</b> the living conditions of low-income families."},
+  {id:176,word:"conducive",pos:"adj.",phonetic:"[kənˈdjuːsɪv]",az:"əlverişli, kömək edən",def:"If one thing is conducive to another thing, it makes the other thing likely to happen.",sentence:"A quiet and tidy workspace is far more <b>conducive</b> to concentration than a noisy one."},
+  {id:177,word:"prodigious",pos:"adj.",phonetic:"[prəˈdɪdʒəs]",az:"böyük, heyrətamiz, möhtəşəm",def:"Something that is prodigious is very large or impressive.",sentence:"Mozart displayed a <b>prodigious</b> musical talent from the time he was just four years old."},
+  {id:178,word:"affinity",pos:"n.",phonetic:"[əˌfɪnɪˈti]",az:"yaxınlıq, oxşarlıq, meyil",def:"If you have an affinity with someone or something, you feel that you are similar to them or that you know and understand them very well.",sentence:"She felt an immediate <b>affinity</b> with the other artists in the workshop."},
+  {id:179,word:"emancipate",pos:"v.",phonetic:"[ɪˈmænsɪpeɪt]",az:"azad etmək, xilas etmək",def:"If people are emancipated, they are freed from unpleasant or unfair social, political, or legal restrictions.",sentence:"Education can <b>emancipate</b> people from cycles of poverty and limited opportunity."},
+  {id:180,word:"reprehensible",pos:"adj.",phonetic:"[ˌreprɪˈhensəbl]",az:"məzəmmətə layiq, qınanacaq",def:"If you think that a type of behaviour or an idea is very bad and morally wrong, you can say that it is reprehensible.",sentence:"The judge called the defendant's behavior <b>reprehensible</b> and sentenced him accordingly."},
+  {id:181,word:"fecund",pos:"adj.",phonetic:"[ˈfiːkənd]",az:"məhsuldar, bərəkətli, yaradıcı",def:"If you describe something as fecund, you approve of it because it produces a lot of good or useful things.",sentence:"The Renaissance was a <b>fecund</b> period for art, science, and literature across Europe."},
+  {id:182,word:"awe",pos:"n.",phonetic:"[ɔː]",az:"heyrət, hörmət, ehtiram",def:"Awe is the feeling of respect and amazement that you have when you are faced with something wonderful and often rather frightening.",sentence:"Standing at the edge of the Grand Canyon, tourists are struck with silent <b>awe</b>."},
+  {id:183,word:"precede",pos:"v.",phonetic:"[prɪˈsiːd]",az:"əvvəl olmaq, qabaqlamaq",def:"To happen before something or come before something in order.",sentence:"A long period of drought <b>preceded</b> the devastating famine that swept the region."},
+  {id:184,word:"obstinate",pos:"adj.",phonetic:"[ˈɒbstɪnət]",az:"inad, inadkar, inadcıl",def:"If you describe someone as obstinate, you are being critical of them because they are very determined to do what they want, and refuse to change their mind.",sentence:"The <b>obstinate</b> child refused to eat his vegetables no matter what his parents tried."},
+  {id:185,word:"plague",pos:"v.",phonetic:"[pleɪɡ]",az:"narahat etmək, əziyyət vermək",def:"If you are plagued by unpleasant things, they continually cause you a lot of trouble or suffering.",sentence:"The construction project was <b>plagued</b> by delays, budget overruns, and safety incidents."},
+  {id:186,word:"intriguing",pos:"adj.",phonetic:"[ɪnˈtriːɡɪŋ]",az:"maraqlı, cəlbedici, maraq oyadan",def:"If you describe something as intriguing, you mean that it is interesting or strange.",sentence:"The archaeologists made an <b>intriguing</b> discovery beneath the floor of the ancient temple."},
+  {id:187,word:"homogeneous",pos:"adj.",phonetic:"[ˌhɒməˈdʒiːnɪəs]",az:"eynicinsli, eyni tipli",def:"Homogeneous is used to describe a group or thing which has members or parts that are all the same.",sentence:"The country's culturally <b>homogeneous</b> population began to diversify after immigration opened up."},
+  {id:188,word:"feeble",pos:"adj.",phonetic:"[ˈfiːbl]",az:"zəif, gücsüz, cansız",def:"If you describe someone or something as feeble, you mean that they are weak.",sentence:"His <b>feeble</b> excuse for missing the meeting convinced absolutely no one in the room."},
+  {id:189,word:"exhaustive",pos:"adj.",phonetic:"[ɪɡˈzɔːstɪv]",az:"əhatəli, tam, hərtərəfli",def:"Including everything possible; very thorough or complete.",sentence:"After an <b>exhaustive</b> search, the investigators finally found the missing document."},
+  {id:190,word:"feign",pos:"v.",phonetic:"[feɪn]",az:"özünü göstərmək, yalanla davranmaq",def:"If someone feigns a particular feeling or condition, they try to make other people think that they have it, although this is not true.",sentence:"He <b>feigned</b> illness to avoid attending the meeting he had been dreading all week."},
+  {id:191,word:"docile",pos:"adj.",phonetic:"[ˈdəʊsaɪl]",az:"itaətkər, sakit, uysal",def:"A person or animal that is docile is quiet, not aggressive, and easily controlled.",sentence:"The rescue dog, once fearful, became gentle and <b>docile</b> after months of careful training."},
+  {id:192,word:"drastic",pos:"adj.",phonetic:"[ˈdræstɪk]",az:"kəskin, radikal, güclü",def:"A drastic change is a very great change.",sentence:"The government took <b>drastic</b> measures to prevent the economy from collapsing further."},
+  {id:193,word:"corpulent",pos:"adj.",phonetic:"[ˈkɔːpjʊlənt]",az:"kök, şişman, ətli",def:"If you describe someone as corpulent, you mean they are fat.",sentence:"The <b>corpulent</b> merchant barely fit into the chair behind his enormous desk."},
+  {id:194,word:"efficacious",pos:"adj.",phonetic:"[ˌefɪˈkeɪʃəs]",az:"təsirli, effektiv, faydalı",def:"Something that is efficacious is effective.",sentence:"The new treatment proved highly <b>efficacious</b> in clinical trials involving thousands of patients."},
+  {id:195,word:"compatible",pos:"adj.",phonetic:"[kəmˈpætəbl]",az:"uyğun, bir-birinə yarayan",def:"If things are compatible, they work well together or can exist together successfully.",sentence:"Make sure the software you download is <b>compatible</b> with your operating system."},
+  {id:196,word:"equitable",pos:"adj.",phonetic:"[ˈekwɪtəbl]",az:"ədalətli, bərabər, haqq-ədalətli",def:"Something that is equitable is fair and reasonable in a way that gives equal treatment to everyone.",sentence:"An <b>equitable</b> distribution of resources is essential for lasting social harmony."},
+  {id:197,word:"conjecture",pos:"n.",phonetic:"[kənˈdʒektʃə]",az:"təxmin, fərziyyə, güman",def:"A conjecture is a conclusion that is based on information that is not certain or complete.",sentence:"Without more data, the scientist's claims remain pure <b>conjecture</b>."},
+  {id:198,word:"contempt",pos:"n.",phonetic:"[kənˈtempt]",az:"xor baxma, nifrət, etinasızlıq",def:"If you have contempt for someone or something, you have no respect for them or think that they are unimportant.",sentence:"She looked at his dishonest proposal with undisguised <b>contempt</b>."},
+  {id:199,word:"abhor",pos:"v.",phonetic:"[əbˈhɔː]",az:"nifrət etmək, ikrah etmək",def:"If you abhor something, you hate it very much, especially for moral reasons.",sentence:"She <b>abhors</b> any form of cruelty toward animals and volunteers regularly at a shelter."},
+  {id:200,word:"respite",pos:"n.",phonetic:"[ˈrespɪt]",az:"müvəqqəti rahatlama, fasilə",def:"A respite is a short delay before a very unpleasant or difficult situation which may or may not take place.",sentence:"The ceasefire provided a brief <b>respite</b> from the months of relentless fighting."},
+  {id:201,word:"hazardous",pos:"adj.",phonetic:"[ˈhæzədəs]",az:"təhlükəli, zərərli",def:"Something that is hazardous is dangerous, especially to people's health or safety.",sentence:"Workers handling <b>hazardous</b> chemicals must wear full protective equipment at all times."},
+  {id:202,word:"onerous",pos:"adj.",phonetic:"[ˈɒnərəs]",az:"ağır, zəhmətli, ağırlıqlı",def:"If you describe a task as onerous, you dislike having to do it because you find it difficult or unpleasant.",sentence:"The <b>onerous</b> paperwork required to apply for the grant discouraged many small businesses."},
+  {id:203,word:"dismay",pos:"n.",phonetic:"[dɪsˈmeɪ]",az:"üzüntü, narahatlıq, məyusluq",def:"The worry, disappointment, or unhappiness you feel when something unpleasant happens.",sentence:"To his <b>dismay</b>, he discovered that his flight had been cancelled due to the storm."},
+  {id:204,word:"foremost",pos:"adj.",phonetic:"[ˈfɔːməʊst]",az:"ən mühüm, başlıca, birinci",def:"The foremost thing or person in a group is the most important or best.",sentence:"She is widely regarded as the <b>foremost</b> authority on medieval European architecture."},
+  {id:205,word:"misinterpret",pos:"v.",phonetic:"[ˌmɪsɪnˈtɜːprɪt]",az:"yanlış anlamaq, səhv başa düşmək",def:"If you misinterpret something, you understand it wrongly.",sentence:"Cultural differences can lead people to <b>misinterpret</b> each other's gestures and expressions."},
+  {id:206,word:"oscillate",pos:"v.",phonetic:"[ˈɒsɪleɪt]",az:"sallanmaq, tərəddüd etmək",def:"If the level or value of something oscillates, it keeps going up and down.",sentence:"Interest rates have been <b>oscillating</b> between three and five percent over the past year."},
+  {id:207,word:"mendacious",pos:"adj.",phonetic:"[menˈdeɪʃəs]",az:"yalançı, aldadıcı",def:"A mendacious person is someone who tells lies. A mendacious statement is one that is a lie.",sentence:"The <b>mendacious</b> politician continued to deny the scandal even after evidence was published."},
+  {id:208,word:"baroque",pos:"adj.",phonetic:"[bəˈrɒk]",az:"barokko üslublu, bəzəkli, mürəkkəb",def:"Baroque architecture and art is an elaborate style that was popular in Europe in the seventeenth and early eighteenth centuries.",sentence:"The cathedral's <b>baroque</b> interior overwhelmed visitors with its golden ornaments and painted ceilings."},
+  {id:209,word:"impeccable",pos:"adj.",phonetic:"[ɪmˈpekəbl]",az:"qüsursuz, mükəmməl, ləkəsiz",def:"If you describe something such as someone's behaviour or appearance as impeccable, you are emphasizing that it is perfect and has no faults.",sentence:"The diplomat's <b>impeccable</b> manners made an excellent impression at every state dinner."},
+  {id:210,word:"perspective",pos:"n.",phonetic:"[pəˈspektɪv]",az:"baxış bucağı, münasibət, nöqteyi-nəzər",def:"A particular perspective is a particular way of thinking about something, especially one that is influenced by your beliefs or experiences.",sentence:"Traveling to new countries gives you a broader <b>perspective</b> on your own culture."},
+  {id:211,word:"appraise",pos:"v.",phonetic:"[əˈpreɪz]",az:"qiymətləndirmək, təhlil etmək",def:"If you appraise something or someone, you consider them carefully and form an opinion about them.",sentence:"The expert was hired to <b>appraise</b> the painting before it was put up for auction."},
+  {id:212,word:"impartial",pos:"adj.",phonetic:"[ɪmˈpɑːʃəl]",az:"qərəzsiz, ədalətli, bitərəf",def:"Someone who is impartial is not directly involved in a particular situation, and is therefore able to give a fair opinion or decision about it.",sentence:"A good referee must always remain completely <b>impartial</b> regardless of which team is winning."},
+  {id:213,word:"secluded",pos:"adj.",phonetic:"[sɪˈkluːdɪd]",az:"təcrid edilmiş, sakit, gizli",def:"A secluded place is quiet and private.",sentence:"They found a <b>secluded</b> beach far from the tourist crowds and spent the day there."},
+  {id:214,word:"bleak",pos:"adj.",phonetic:"[bliːk]",az:"ümidsiz, qaramsar, sönük",def:"If a situation is bleak, it is bad, and seems unlikely to improve.",sentence:"The economic outlook for the region remains <b>bleak</b> following the closure of the main factory."},
+  {id:215,word:"reinforce",pos:"v.",phonetic:"[ˌriːɪnˈfɔːs]",az:"möhkəmləndirmək, gücləndirmək",def:"If something reinforces a feeling, situation, or process, it makes it stronger or more intense.",sentence:"Positive feedback from managers can greatly <b>reinforce</b> employees' motivation and confidence."},
+  {id:216,word:"repel",pos:"v.",phonetic:"[rɪˈpel]",az:"iyrəndirmək, uzaqlaşdırmaq",def:"If something repels you, you find it horrible and disgusting.",sentence:"The smell of the rotting food was enough to <b>repel</b> anyone who entered the room."},
+  {id:217,word:"inalienable",pos:"adj.",phonetic:"[ɪnˈeɪlɪənəbl]",az:"ayrılmaz, alına bilməyən",def:"If you say that someone has an inalienable right to something, you are emphasizing that they have a right to it that cannot be changed or taken away.",sentence:"Freedom of speech is considered an <b>inalienable</b> right in many democratic constitutions."},
+  {id:218,word:"debase",pos:"v.",phonetic:"[dɪˈbeɪs]",az:"dəyərini azaltmaq, alçaltmaq",def:"To debase something means to reduce its value or quality.",sentence:"Flooding the market with cheap copies will only <b>debase</b> the value of the genuine product."},
+  {id:219,word:"misgiving",pos:"n.",phonetic:"[mɪsˈɡɪvɪŋ]",az:"şübhə, narahatlıq, şübhəli hiss",def:"If you have misgivings about something, you feel that it is not quite right and are worried that it may have unwanted results.",sentence:"She had serious <b>misgivings</b> about accepting the job offer in a foreign country."},
+  {id:220,word:"steadfast",pos:"adj.",phonetic:"[ˈstedfæst]",az:"möhkəm, dönməz, sədaqətli",def:"If someone is steadfast in something that they are doing, they are convinced that what they are doing is right and they refuse to change it or to give up.",sentence:"He remained <b>steadfast</b> in his belief that the truth would eventually come out."},
+  {id:221,word:"incessant",pos:"adj.",phonetic:"[ɪnˈsesnt]",az:"dayanmadan davam edən, aramsız",def:"An incessant process or activity is one that continues without stopping.",sentence:"The <b>incessant</b> noise from the construction site made it impossible to concentrate."},
+  {id:222,word:"unwarranted",pos:"adj.",phonetic:"[ʌnˈwɒrəntɪd]",az:"əsassız, haqqı olmayan, lazımsız",def:"If you describe something as unwarranted, you are critical of it because there is no need or reason for it.",sentence:"The harsh criticism directed at the young artist was completely <b>unwarranted</b>."},
+  {id:223,word:"purport",pos:"v.",phonetic:"[ˈpɜːpɒt]",az:"iddia etmək, özünü göstərmək",def:"If you say that someone or something purports to do or be a particular thing, you mean that they claim to do or be that thing, although you may not always believe that claim.",sentence:"The document <b>purports</b> to be an original letter from the eighteenth century."},
+  {id:224,word:"deride",pos:"v.",phonetic:"[dɪˈraɪd]",az:"ələ salmaq, istehza etmək",def:"If you deride someone or something, you say that they are stupid or have no value.",sentence:"Critics <b>derided</b> the plan as hopelessly naive and completely unrealistic."},
+  {id:225,word:"coherent",pos:"adj.",phonetic:"[kəʊˈhɪərənt]",az:"ardıcıl, məntiqi, anlaşılan",def:"If something is coherent, it is well planned, so that it is clear and sensible and all its parts go well with each other.",sentence:"The candidate failed to present a <b>coherent</b> strategy for dealing with the country's debt."},
+  {id:226,word:"reciprocate",pos:"v.",phonetic:"[rɪˈsɪprəkeɪt]",az:"qarşılıqlı cavab vermək, geri qaytarmaq",def:"If your feelings or actions toward someone are reciprocated, the other person feels or behaves in the same way toward you.",sentence:"She hoped he would <b>reciprocate</b> her kindness, but he seemed to take it for granted."},
+  {id:227,word:"deplete",pos:"v.",phonetic:"[dɪˈpliːt]",az:"tükəndirmək, azaltmaq",def:"To deplete a stock or amount of something means to reduce it.",sentence:"Decades of overfishing have severely <b>depleted</b> the fish populations in these waters."},
+  {id:228,word:"taint",pos:"v.",phonetic:"[teɪnt]",az:"ləkələmək, çirkləndirmək",def:"If a person or thing is tainted by something bad or undesirable, their status or reputation is harmed because they are associated with it.",sentence:"The scandal <b>tainted</b> the entire organization, not just the individuals directly involved."},
+  {id:229,word:"caress",pos:"v.",phonetic:"[kəˈres]",az:"nəvaziş etmək, mehriban toxunmaq",def:"If you caress someone or something, you stroke them gently and affectionately.",sentence:"She gently <b>caressed</b> the cat as it purred contentedly on her lap."},
+  {id:230,word:"segregate",pos:"v.",phonetic:"[ˈseɡrɪɡeɪt]",az:"ayırmaq, təcrid etmək",def:"To segregate two groups of people or things means to keep them physically apart from each other.",sentence:"The law once allowed schools to <b>segregate</b> students on the basis of race."},
+  {id:231,word:"pristine",pos:"adj.",phonetic:"[ˈprɪstiːn]",az:"saf, təmiz, toxunulmamış",def:"Pristine things are extremely clean or new.",sentence:"The museum kept the ancient manuscript in <b>pristine</b> condition inside a sealed glass case."},
+  {id:232,word:"premise",pos:"n.",phonetic:"[ˈpremɪs]",az:"fərziyyə, əsas, ilkin müddəa",def:"A premise is something that you suppose is true and that you use as a basis for developing an idea.",sentence:"The entire argument rests on a <b>premise</b> that has never actually been proven."},
+  {id:233,word:"galvanize",pos:"v.",phonetic:"[ˈɡælvənaɪz]",az:"hərəkətə gətirmək, ruhlandırmaq",def:"To galvanize someone means to cause them to take action, for example by making them feel very excited, afraid, or angry.",sentence:"The shocking documentary <b>galvanized</b> millions of viewers into demanding political change."},
+  {id:234,word:"tedious",pos:"adj.",phonetic:"[ˈtiːdɪəs]",az:"sıxıcı, cansıxıcı, uzun-uzadı",def:"If you describe something such as a job, task, or situation as tedious, you mean it is boring and frustrating.",sentence:"Manually entering data into spreadsheets all day is an incredibly <b>tedious</b> task."},
+  {id:235,word:"forgo",pos:"v.",phonetic:"[fɔːˈɡəʊ]",az:"imtina etmək, əl çəkmək",def:"If you forgo something, you decide to do without it, although you would like it.",sentence:"She chose to <b>forgo</b> a high salary in order to pursue work that truly inspired her."},
+  {id:236,word:"impending",pos:"adj.",phonetic:"[ɪmˈpendɪŋ]",az:"yaxınlaşan, baş verəcək olan",def:"That is going to happen very soon.",sentence:"Dark storm clouds signaled the <b>impending</b> arrival of the worst hurricane in decades."},
+  {id:237,word:"rigorous",pos:"adj.",phonetic:"[ˈrɪɡərəs]",az:"sərt, ciddi, hərtərəfli",def:"If someone is rigorous in the way that they do something, they are very careful and thorough.",sentence:"The university applies a <b>rigorous</b> selection process to choose the most qualified applicants."},
+  {id:238,word:"bewilder",pos:"v.",phonetic:"[bɪˈwɪldə]",az:"çaşdırmaq, dolaşdırmaq",def:"If something bewilders you, it is so confusing or difficult that you cannot understand it.",sentence:"The complexity of the tax code continues to <b>bewilder</b> ordinary citizens across the country."},
+  {id:239,word:"compliment",pos:"n.",phonetic:"[ˈkɒmplɪmənt]",az:"tərifləmə, mədh, komplementar söz",def:"A compliment is a polite remark that you make to someone to show that you like their appearance, appreciate their qualities, or approve of what they have done.",sentence:"She accepted the <b>compliment</b> graciously and thanked him for his kind words."},
+  {id:240,word:"indispensable",pos:"adj.",phonetic:"[ˌɪndɪˈspensəbl]",az:"vacib, lazımsız edilə bilməz, zəruri",def:"If you say that someone or something is indispensable, you mean that they are absolutely essential and other people or things cannot function without them.",sentence:"Clean water is an <b>indispensable</b> resource for the survival of every living organism."},
+  {id:241,word:"decry",pos:"v.",phonetic:"[dɪˈkraɪ]",az:"tənqid etmək, pislləmək, qınamaq",def:"If someone decries an idea or action, they criticize it strongly.",sentence:"Environmental groups were quick to <b>decry</b> the government's decision to expand oil drilling."},
+  {id:242,word:"aspect",pos:"n.",phonetic:"[ˈæspekt]",az:"aspekt, tərəf, cəhət",def:"An aspect of something is one of the parts of its character or nature.",sentence:"Teamwork is the most important <b>aspect</b> of any successful long-term project."}
+];
+// ─── DAYS CONFIG ─────────────────────────────────────────────────────────────
+const DAYS = [
+  { label:"Day 1", range:"Words 1–40",   ids:range(1,40)    },
+  { label:"Day 2", range:"Words 41–80",  ids:range(41,80)   },
+  { label:"Day 3", range:"Words 81–120", ids:range(81,120)  },
+  { label:"Day 4", range:"Words 121–160",ids:range(121,160) },
+  { label:"Day 5", range:"Words 161–200",ids:range(161,200) },
+  { label:"Day 6", range:"Words 201–242",ids:range(201,242) }
+];
+
+function range(a,b){ const r=[]; for(let i=a;i<=b;i++) r.push(i); return r; }
+function getWord(id){ return WORDS.find(w=>w.id===id); }
+
+let learned = new Set(JSON.parse(localStorage.getItem('omar_learned')||'[]'));
+let sessionCards=[], sessionIdx=0, isFlipped=false, currentMode=null;
+
+function saveState(){ localStorage.setItem('omar_learned', JSON.stringify([...learned])); }
+
+// ─── HOME ─────────────────────────────────────────────────────────────────────
+function renderHome(){
+  updateHeaderStats();
+  const grid = document.getElementById('day-grid');
+  grid.innerHTML = DAYS.map((d,i) => {
+    const total=d.ids.length, done=d.ids.filter(id=>learned.has(id)).length, pct=Math.round(done/total*100);
+    return `<div class="day-card" onclick="startDay(${i})">
+      <div class="day-label">${d.label}</div>
+      <div class="day-range">${d.range}</div>
+      <div class="day-progress-bar"><div class="day-progress-fill" style="width:${pct}%"></div></div>
+      <div class="day-progress-text">${done}/${total} learned</div>
+    </div>`;
+  }).join('');
+
+  const po = document.getElementById('practice-options');
+  po.innerHTML = '';
+  const add = (label, title, count, ids) => {
+    if(count===0) return;
+    const el = document.createElement('div');
+    el.className='practice-card';
+    el.innerHTML=`<div class="pc-label">${label}</div><div class="pc-title">${title}</div><div class="pc-count">${count} words</div>`;
+    el.onclick=()=>startPractice(title,ids);
+    po.appendChild(el);
+  };
+  if(learned.size>0) add('✓ Learned','Practice Learned',learned.size,[...learned]);
+  DAYS.forEach((d,i)=>{ const l=d.ids.filter(id=>learned.has(id)); if(l.length>0) add(d.label,`Review ${d.label}`,l.length,l); });
+  add('🌍 All Words','Full List Shuffle',WORDS.length,WORDS.map(w=>w.id));
+  if(po.innerHTML==='') po.innerHTML='<p style="color:var(--muted);font-size:0.85rem;text-align:center;width:100%;">Mark words as learned to unlock practice modes.</p>';
+}
+
+function updateHeaderStats(){ document.getElementById('hdr-learned').textContent=learned.size; }
+
+// ─── STUDY ────────────────────────────────────────────────────────────────────
+function startDay(i){ const d=DAYS[i]; currentMode={type:'day',label:d.label}; launchSession(d.label,shuffle([...d.ids])); }
+function startPractice(title,ids){ currentMode={type:'practice',label:title}; launchSession(title,shuffle([...ids])); }
+
+function launchSession(label,cards){
+  sessionCards=cards; sessionIdx=0; isFlipped=false;
+  document.getElementById('study-day-label').textContent=label;
+  showScreen('screen-study');
+  renderCard();
+}
+
+function renderCard(){
+  const id=sessionCards[sessionIdx], w=getWord(id), total=sessionCards.length;
+  document.getElementById('study-cur').textContent=sessionIdx+1;
+  document.getElementById('study-total').textContent=total;
+  document.getElementById('progress-fill').style.width=((sessionIdx+1)/total*100)+'%';
+  document.getElementById('word-num').textContent=`#${String(w.id).padStart(3,'0')}`;
+  document.getElementById('word-term').textContent=w.word;
+  document.getElementById('word-pos').textContent=w.pos;
+  document.getElementById('word-phonetic').textContent=w.phonetic;
+  document.getElementById('word-az').textContent=w.az;
+  document.getElementById('word-def').textContent=w.def;
+  document.getElementById('word-sentence').innerHTML=w.sentence;
+  isFlipped=false;
+  document.getElementById('flip-card').classList.remove('flipped');
+  const scene=document.getElementById('card-scene'), btn=document.getElementById('btn-learned');
+  if(learned.has(id)){ scene.classList.add('is-learned'); btn.classList.add('active'); btn.textContent='✓ Learned'; }
+  else { scene.classList.remove('is-learned'); btn.classList.remove('active'); btn.textContent='☑ Mark Learned'; }
+}
+
+function flipCard(){ isFlipped=!isFlipped; document.getElementById('flip-card').classList.toggle('flipped',isFlipped); }
+function nextCard(){ if(sessionIdx<sessionCards.length-1){ sessionIdx++; renderCard(); } else showComplete(); }
+function prevCard(){ if(sessionIdx>0){ sessionIdx--; renderCard(); } }
+
+function toggleLearned(){
+  const id=sessionCards[sessionIdx];
+  if(learned.has(id)){ learned.delete(id); document.getElementById('card-scene').classList.remove('is-learned'); document.getElementById('btn-learned').classList.remove('active'); document.getElementById('btn-learned').textContent='☑ Mark Learned'; showToast('Removed from learned'); }
+  else { learned.add(id); document.getElementById('card-scene').classList.add('is-learned'); document.getElementById('btn-learned').classList.add('active'); document.getElementById('btn-learned').textContent='✓ Learned'; showToast('Marked as learned ✓'); }
+  saveState(); updateHeaderStats();
+}
+
+function showComplete(){
+  document.getElementById('complete-sub').textContent=`You finished: ${currentMode.label}`;
+  document.getElementById('c-seen').textContent=sessionCards.length;
+  document.getElementById('c-learned').textContent=sessionCards.filter(id=>learned.has(id)).length;
+  document.getElementById('c-total').textContent=learned.size;
+  showScreen('screen-complete');
+}
+
+function retrySession(){ launchSession(currentMode.label,shuffle([...sessionCards])); }
+function goHome(){ showScreen('screen-home'); renderHome(); }
+
+// ─── UTILS ────────────────────────────────────────────────────────────────────
+function showScreen(id){ document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active')); document.getElementById(id).classList.add('active'); }
+function shuffle(arr){ for(let i=arr.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1));[arr[i],arr[j]]=[arr[j],arr[i]]; } return arr; }
+let toastTimer;
+function showToast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove('show'),1800); }
+
+document.addEventListener('keydown',e=>{
+  if(document.getElementById('screen-study').classList.contains('active')){
+    if(e.code==='Space'){ e.preventDefault(); flipCard(); }
+    if(e.code==='ArrowRight') nextCard();
+    if(e.code==='ArrowLeft') prevCard();
+    if(e.code==='KeyL') toggleLearned();
+  }
+});
+
+renderHome();
+</script>
+</body>
+</html>
